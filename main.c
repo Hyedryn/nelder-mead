@@ -18,8 +18,10 @@ int main(int argc, const char *argv[]) {
   }
 
   // reading initial point from command line
-  // 0.5 0.5 1 380 512
-  const int n = argc - 3;
+  // 0.5 0.5 0.2 0.1 380 512
+  // frac1 frac2 fracN-1 sigmaN sizeDic sizeY
+  // argc=7 here (1+6)
+  const int n = argc - 3; //here n=4
   point_t start;
   start.x = malloc(n * sizeof(double));
   for (int i = 0; i < n-1; i++) {
@@ -27,8 +29,9 @@ int main(int argc, const char *argv[]) {
   }
   int num_atoms = atoi(argv[n+1]);
   int num_y = atoi(argv[n+2]);
-    printf("Num atoms: %d\n", num_atoms);
-    printf("Num y: %d\n", num_y);
+  printf("Size of x %d\n", n);
+  printf("Num atoms: %d\n", num_atoms);
+  printf("Num y: %d\n", num_y);
 
   // optimisation settings
   optimset_t optimset;
@@ -44,7 +47,13 @@ int main(int argc, const char *argv[]) {
   mf_params.dicPos = malloc(sizeof(int) * (n-1));
   mf_params.dicPos[0] = 0;
   mf_params.dicPos[1] = num_atoms;
-  mf_params.dicPos[2] = num_atoms + num_atoms - 25;
+  int csf_comp = 0;
+  if ((n-1)>2){
+      printf("Hypothesis: CSF is used\n");
+      mf_params.dicPos[2] = num_atoms + num_atoms;
+      csf_comp = 1;
+  }
+
 
 
 // Allocate memory for mf_params.Asmall
@@ -55,7 +64,7 @@ int main(int argc, const char *argv[]) {
    }
 
    for (int i = 0; i < num_y; i++) {
-        Asmall[i] = calloc(( (2*num_atoms) +1), sizeof(double));
+        Asmall[i] = calloc(( (2*num_atoms) + csf_comp), sizeof(double));
         if (Asmall[i] == NULL) {
             fprintf(stderr, "Memory allocation error for columns\n");
             return 1;
@@ -70,7 +79,7 @@ int main(int argc, const char *argv[]) {
     }
 
     for (int i = 0; i < num_y; i++) {
-        for (int j = 0; j < (2*num_atoms)+1; j++) {
+        for (int j = 0; j < (2*num_atoms)+csf_comp; j++) {
             if (fscanf(fileAsmall, "%lf", &Asmall[i][j]) != 1) {
                 fprintf(stderr, "Error reading from file");
                 return 1;
@@ -95,9 +104,16 @@ int main(int argc, const char *argv[]) {
         }
     }
 
+    // Find max value of ysquare
+    double max_ysquare = 0;
+    for (int i=0; i<num_y; i++) {
+        if (ysquare[i] > max_ysquare) {
+            max_ysquare = ysquare[i];
+        }
+    }
     // Put y to square
     for (int i=0; i<num_y; i++) {
-        ysquare[i] = ysquare[i]/3300.0;
+        ysquare[i] = ysquare[i]/max_ysquare;
         ysquare[i] = ysquare[i]*ysquare[i];
     }
 
@@ -151,7 +167,12 @@ int main(int argc, const char *argv[]) {
           clock_t middleTime = clock();
           printf("Best solution so far: %f\n", best_cost);
           printf("Best i and j so far: %d %d\n", best_i, best_j);
-          printf("Solution x so far: %f %f %f %f\n", best_solution.x[0], best_solution.x[1], best_solution.x[2], best_solution.x[3]);
+          if (csf_comp >0){
+                printf("Solution x so far: %f %f %f %f\n", best_solution.x[0], best_solution.x[1], best_solution.x[2], best_solution.x[3]);
+          }else{
+                printf("Solution x so far: %f %f %f\n", best_solution.x[0], best_solution.x[1], best_solution.x[2]);
+          }
+
           double cpu_time_used = ((double) (middleTime - startTime)) / CLOCKS_PER_SEC;
           double iter = i*num_atoms;
           double iterBySecond = iter/cpu_time_used;
