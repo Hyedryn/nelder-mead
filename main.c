@@ -211,7 +211,11 @@ int main(int argc, const char *argv[]) {
         perror("Error opening file");
         return -1;
     }
-    fprintf(fileInd, "%d %d 0", best_i, best_j);
+    if (csf_comp){
+        fprintf(fileInd, "%d %d 0", best_i, best_j);
+    }else{
+        fprintf(fileInd, "%d %d", best_i, best_j);
+    }
     fclose(fileInd);
 
     FILE *fileObj = fopen("obj.txt", "w");
